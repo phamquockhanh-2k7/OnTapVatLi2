@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Ôn Tập Vật Lý Trực Tuyến - Neon Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #00ff66;
+            --neon-red: #ff003c;
+            --bg-dark: #050505;
+            --panel-bg: #0f0f13;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #e2e8f0;
+            scroll-behavior: smooth;
+        }
+
+        /* --- Custom Neon Scrollbar --- */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { 
+            background: #333; 
+            border-radius: 4px; 
+            border: 1px solid #555;
+        }
+        ::-webkit-scrollbar-thumb:hover { 
+            background: var(--neon-cyan); 
+            box-shadow: 0 0 10px var(--neon-cyan); 
+        }
+
+        /* --- Neon Glow Utilities --- */
+        .glow-cyan {
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3), inset 0 0 5px rgba(0, 243, 255, 0.1);
+            border-color: var(--neon-cyan);
+        }
+        .glow-text-cyan {
+            color: var(--neon-cyan);
+            text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
+        }
+        .glow-pink {
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.3), inset 0 0 5px rgba(255, 0, 255, 0.1);
+            border-color: var(--neon-pink);
+        }
+        
+        /* --- Chart Container --- */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 40vh;
+            min-height: 300px;
+            max-height: 500px;
+        }
+
+        /* --- Custom Neon Radio Buttons --- */
+        .custom-radio input[type="radio"] { display: none; }
+        .custom-radio .radio-mark {
+            width: 22px;
+            height: 22px;
+            border: 2px solid #475569;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 0 rgba(0, 243, 255, 0);
+        }
+        .custom-radio:hover .radio-mark {
+            border-color: #94a3b8;
+        }
+        .custom-radio input[type="radio"]:checked + .radio-mark {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 10px var(--neon-cyan), inset 0 0 5px var(--neon-cyan);
+        }
+        .custom-radio input[type="radio"]:checked + .radio-mark::after {
+            content: "";
+            width: 10px;
+            height: 10px;
+            background: var(--neon-cyan);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--neon-cyan);
+        }
+        .custom-radio input[type="radio"]:checked ~ .option-content {
+            color: var(--neon-cyan);
+            text-shadow: 0 0 5px rgba(0, 243, 255, 0.4);
+        }
+
+        /* Fade in animation for smooth transitions */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="font-sans h-screen flex flex-col overflow-hidden selection:bg-cyan-500 selection:text-white">
+
+    <header class="bg-[#0f0f13] border-b border-cyan-500/30 h-16 flex items-center justify-between px-6 shrink-0 z-20 shadow-[0_4px_20px_rgba(0,243,255,0.1)]">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-transparent border-2 border-cyan-400 rounded flex items-center justify-center text-cyan-400 font-bold text-xl glow-cyan shadow-none">V</div>
+            <h1 class="text-xl font-bold text-gray-100 hidden sm:block tracking-wider">Full 119 câu trắc nghiệm <span class="glow-text-cyan">VLUD</span></h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="progress-text" class="text-sm font-medium text-cyan-400 border border-cyan-500/30 bg-cyan-950/30 px-4 py-1.5 rounded-full shadow-[0_0_10px_rgba(0,243,255,0.1)]">
+                0/119 Câu hỏi
+            </div>
+            <button id="btn-submit-top" class="hidden px-5 py-2 bg-transparent border border-pink-500 text-pink-400 font-medium rounded shadow-[0_0_10px_rgba(255,0,255,0.2)] hover:bg-pink-500/20 hover:shadow-[0_0_15px_rgba(255,0,255,0.5)] transition-all">
+                NỘP BÀI
+            </button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden relative">
+        
+        <aside class="w-72 bg-[#0a0a0d] border-r border-cyan-500/20 flex-col hidden md:flex shrink-0 z-10">
+            <div class="p-5 border-b border-gray-800">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest glow-text-cyan opacity-80">Danh sách chương</h2>
+            </div>
+            <nav id="chapter-nav" class="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                </nav>
+        </aside>
+
+        <div id="mobile-nav" class="md:hidden bg-[#0a0a0d] border-b border-gray-800 shrink-0 overflow-x-auto whitespace-nowrap p-3 flex gap-3">
+            </div>
+
+        <main class="flex-1 overflow-y-auto relative bg-[#050505] scroll-smooth" id="main-scroll-area">
+            <div class="absolute inset-0 z-0 opacity-10 pointer-events-none" style="background-image: linear-gradient(#00f3ff 1px, transparent 1px), linear-gradient(90deg, #00f3ff 1px, transparent 1px); background-size: 40px 40px;"></div>
+
+            <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 pb-32 relative z-10">
+                
+                <div id="view-welcome" class="bg-[#0f0f13] rounded-xl border border-cyan-500/50 p-10 text-center mt-10 shadow-[0_0_30px_rgba(0,243,255,0.15)] animate-fade-in relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-pink-500"></div>
+                    <div class="w-24 h-24 border-2 border-cyan-400 text-cyan-400 rounded-full flex items-center justify-center mx-auto mb-8 text-5xl shadow-[0_0_20px_rgba(0,243,255,0.3)]">
+                        ⚡
+                    </div>
+                    <h2 class="text-3xl font-bold text-white mb-4 tracking-wide uppercase">Giao Diện Ôn Tập <span class="glow-text-cyan">Tối Thượng</span></h2>
+                    <p class="text-gray-400 mb-10 max-w-lg mx-auto leading-relaxed text-lg">
+                        Hệ thống bao gồm 9 chương trọng tâm của Vật lý. Chọn đáp án để kích hoạt dữ liệu, hệ thống lõi sẽ tự động ghi nhận tiến trình của bạn.
+                    </p>
+                    <button id="btn-start" class="px-10 py-4 bg-transparent border-2 border-cyan-400 text-cyan-400 font-bold tracking-widest rounded uppercase hover:bg-cyan-400 hover:text-black shadow-[0_0_15px_rgba(0,243,255,0.4)] hover:shadow-[0_0_30px_rgba(0,243,255,0.8)] transition-all duration-300 transform hover:scale-105">
+                        Khởi Động Hệ Thống
+                    </button>
+                </div>
+
+                <div id="view-quiz" class="hidden space-y-8 animate-fade-in">
+                    </div>
+
+                <div id="view-results" class="hidden animate-fade-in">
+                    
+                    <div class="bg-[#0f0f13] rounded-xl border border-cyan-500/40 p-8 mb-8 text-center shadow-[0_0_20px_rgba(0,243,255,0.1)] relative">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 via-pink-500 to-cyan-500"></div>
+                        <h2 class="text-3xl font-bold text-white mb-6 uppercase tracking-wider glow-text-cyan">Phân Tích Dữ Liệu</h2>
+                        <div class="flex flex-wrap items-center justify-center gap-6 mt-4">
+                            <div class="bg-black/50 border border-cyan-500/30 p-6 rounded-lg min-w-[200px]">
+                                <p class="text-sm text-gray-400 uppercase tracking-widest mb-2">Tổng điểm</p>
+                                <p id="res-total-score" class="text-4xl font-bold text-cyan-400 drop-shadow-[0_0_8px_rgba(0,243,255,0.5)]">0/119</p>
+                            </div>
+                            <div class="bg-black/50 border border-pink-500/30 p-6 rounded-lg min-w-[200px]">
+                                <p class="text-sm text-gray-400 uppercase tracking-widest mb-2">Tỷ lệ chính xác</p>
+                                <p id="res-percentage" class="text-4xl font-bold text-pink-400 drop-shadow-[0_0_8px_rgba(255,0,255,0.5)]">0%</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#0f0f13] rounded-xl border border-gray-800 p-6 mb-8">
+                        <h3 class="text-xl font-semibold text-gray-200 mb-4 text-center uppercase tracking-widest">Biểu Đồ Năng Lực</h3>
+                        <div class="chart-container">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="review-section" class="space-y-6 mt-10">
+                        <h3 class="text-2xl font-bold text-white border-b border-gray-800 pb-4 uppercase tracking-widest"><span class="glow-text-cyan">|</span> Giải Mã Chi Tiết</h3>
+                        </div>
+
+                </div>
+
+            </div>
+        </main>
+        
+        <div id="floating-action" class="hidden absolute bottom-8 right-8 z-30">
+            <button id="btn-submit-float" class="px-8 py-4 bg-black border-2 border-pink-500 text-pink-400 font-bold tracking-widest uppercase rounded-full shadow-[0_0_20px_rgba(255,0,255,0.4)] hover:bg-pink-500 hover:text-black hover:shadow-[0_0_40px_rgba(255,0,255,0.8)] transition-all duration-300 hover:scale-105 flex items-center gap-3">
+                <span>Trích Xuất Kết Quả</span>
+                <span class="text-2xl leading-none">⏣</span> 
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. DATA STRUCTURE ---
+        const db = [
+            {
+                id: "ch1",
+                title: "Chương 1 – CƠ HỌC",
+                desc: "Động lực học chất điểm, mômen, công, năng lượng và chuyển động quay.",
+                questions: [
+                    { q: "Câu 1. Một lực không đổi F tác dụng lên vật, hợp với độ dời s một góc α. Công của lực được tính bằng:", options: ["A. A = Fs", "B. A = Fs cosα", "C. A = Fs sinα", "D. A = F/s"], ans: 1 },
+                    { q: "Câu 2. Theo định luật II Newton, gia tốc của vật có cùng hướng với:", options: ["A. vận tốc của vật", "B. độ dời của vật", "C. hợp lực tác dụng lên vật", "D. trọng lượng của vật"], ans: 2 },
+                    { q: "Câu 3. Động năng tịnh tiến của vật khối lượng m, vận tốc v là:", options: ["A. Wđ = mv", "B. Wđ = mgh", "C. Wđ = 1/2 mv²", "D. Wđ = Ft"], ans: 2 },
+                    { q: "Câu 4. Mômen lực đối với trục quay phụ thuộc vào:", options: ["A. lực tác dụng và cánh tay đòn", "B. khối lượng riêng của vật", "C. nhiệt độ của vật", "D. điện tích của vật"], ans: 0 },
+                    { q: "Câu 5. Một vật khối lượng 4 kg chịu lực kéo ngang 20 N trên mặt phẳng ngang. Hệ số ma sát trượt là 0,2, lấy g = 10 m/s². Gia tốc của vật là:", options: ["A. 2 m/s²", "B. 3 m/s²", "C. 4 m/s²", "D. 5 m/s²"], ans: 1 },
+                    { q: "Câu 6. Một vật chuyển động tròn đều. Lực gây ra gia tốc hướng tâm luôn có phương:", options: ["A. tiếp tuyến với quỹ đạo", "B. hướng ra xa tâm", "C. hướng về tâm quỹ đạo", "D. song song với vận tốc"], ans: 2 },
+                    { q: "Câu 7. Một vật rắn quay quanh trục cố định. Nếu tốc độ góc tăng gấp đôi thì động năng quay:", options: ["A. tăng 2 lần", "B. tăng 4 lần", "C. giảm 2 lần", "D. không đổi"], ans: 1 },
+                    { q: "Câu 8. Một hình trụ đặc lăn không trượt xuống mặt phẳng nghiêng góc 30°. Lấy g = 10 m/s², mômen quán tính I = 1/2 mR². Gia tốc của tâm khối là:", options: ["A. 2,5 m/s²", "B. 3,33 m/s²", "C. 5,0 m/s²", "D. 6,67 m/s²"], ans: 1 },
+                    { q: "Câu 9. Một vật khối lượng 4 kg treo vào dây quấn quanh ròng rọc dạng đĩa đặc khối lượng 2 kg. Bỏ qua ma sát, dây không trượt trên ròng rọc. Lấy g = 10 m/s². Gia tốc của vật là:", options: ["A. 5 m/s²", "B. 6 m/s²", "C. 8 m/s²", "D. 10 m/s²"], ans: 2 },
+                    { q: "Câu 10. Một hình trụ đặc lăn không trượt từ độ cao h = 1,2 m. Lấy g = 10 m/s². Vận tốc của tâm khối ở chân dốc là:", options: ["A. 2 m/s", "B. 3 m/s", "C. 4 m/s", "D. 5 m/s"], ans: 2 },
+                    { q: "Câu 11. Một trụ rỗng và một trụ đặc có cùng bán kính, khối lượng và chiều dài. Cả hai đều quay quanh trục của chúng với cùng tốc độ góc. Vật nào có động năng quay lớn hơn?", options: ["A. Bằng nhau.", "B. Không thể xác định được.", "C. Trụ đặc.", "D. Trụ rỗng."], ans: 3 },
+                    { q: "Câu 12. Dùng lực F tác dụng lên một khối hộp làm nó chuyển động trên mặt phẳng nằm ngang, có ma sát. Trong số các lực tác dụng lên vật, lực nào sau đây không sinh công trong quá trình vật chuyển động?", options: ["A. Lực F và trọng lực.", "B. Lực F và lực ma sát.", "C. Trọng lực và phản lực của mặt phẳng lên khối hộp.", "D. Lực ma sát và trọng lực."], ans: 2 },
+                    { q: "Câu 13. Một quả cầu đặc có khối lượng M, bán kính R, quay quanh trục quay đi qua tâm. Mômen quán tính của quả cầu được tính theo biểu thức nào?", options: ["A. I = 2/5 MR²", "B. I = 1/2 MR²", "C. I = 2/3 MR²", "D. I = MR²"], ans: 0 },
+                    { q: "Câu 14. Nhận xét nào sau đây là không đúng?", options: ["A. Trường hấp dẫn, trường tĩnh điện là những trường lực thế.", "B. Đối với va chạm đàn hồi, động năng của hệ trước và sau va chạm được bảo toàn.", "C. Công của trọng lực phụ thuộc vào hình dạng quỹ đạo.", "D. Động năng của một vật rắn lăn không trượt được tính theo công thức: Wđ = mv²/2 + Iω²/2"], ans: 2 }
+                ]
+            },
+            {
+                id: "ch2",
+                title: "Chương 2 – ĐIỆN TRƯỜNG TĨNH",
+                desc: "Điện tích, điện trường, cường độ điện trường, điện thế, điện thông, định luật Gauss.",
+                questions: [
+                    { q: "Câu 1. Đơn vị nào sau đây có thể dùng cho cường độ điện trường?", options: ["A. N/C", "B. J/s", "C. Wb", "D. T"], ans: 0 },
+                    { q: "Câu 2. Điện thế tại một điểm đặc trưng cho:", options: ["A. khả năng sinh công của điện trường trên một đơn vị điện tích", "B. độ lớn từ trường tại điểm đó", "C. khối lượng của điện tích thử", "D. vận tốc chuyển động của electron"], ans: 0 },
+                    { q: "Câu 3. Trong trạng thái cân bằng tĩnh điện, điện trường bên trong phần vật dẫn bằng:", options: ["A. vô hạn", "B. bằng không", "C. bằng điện trường ngoài", "D. luôn biến thiên điều hòa"], ans: 1 },
+                    { q: "Câu 4. Đường sức điện trường của điện tích điểm dương có chiều:", options: ["A. hướng vào điện tích", "B. hướng ra xa điện tích", "C. quay tròn quanh điện tích", "D. không có chiều xác định"], ans: 1 },
+                    { q: "Câu 5. Điện trường do điện tích điểm q gây ra tại điểm cách nó r có độ lớn tỉ lệ với:", options: ["A. q/r", "B. q/r²", "C. qr", "D. r²/q"], ans: 1 },
+                    { q: "Câu 6. Một điện tích q = 2 nC đặt trong chân không. Tại điểm cách điện tích 0,3 m, cường độ điện trường có độ lớn xấp xỉ:", options: ["A. 100 N/C", "B. 200 N/C", "C. 400 N/C", "D. 600 N/C"], ans: 1 },
+                    { q: "Câu 7. Một mặt phẳng diện tích 0,02 m² đặt trong điện trường đều E = 500 N/C. Pháp tuyến của mặt hợp với E góc 60°. Điện thông qua mặt là:", options: ["A. 2,5 N.m²/C", "B. 5 N.m²/C", "C. 10 N.m²/C", "D. 20 N.m²/C"], ans: 1 },
+                    { q: "Câu 8. Một mặt kín bao quanh điện tích tổng cộng q = 8,85.10⁻⁹ C. Lấy ε₀ = 8,85.10⁻¹² C²/(N.m²). Điện thông qua mặt kín bằng:", options: ["A. 10 N.m²/C", "B. 100 N.m²/C", "C. 1000 N.m²/C", "D. 10 000 N.m²/C"], ans: 2 },
+                    { q: "Câu 9. Hai điện tích +q và −q đặt cách nhau một đoạn d. Tại trung điểm của đoạn nối hai điện tích, cường độ điện trường có độ lớn:", options: ["A. 0", "B. 2kq/d²", "C. 4kq/d²", "D. 8kq/d²"], ans: 3 },
+                    { q: "Câu 10. Mật độ năng lượng điện trường trong chân không được xác định bởi:", options: ["A. u = ε₀E", "B. u = 1/2 ε₀E²", "C. u = E/ε₀", "D. u = ε₀/E²"], ans: 1 },
+                    { q: "Câu 11. Công thức của định lý Ostrogradsky – Gauss về điện trường trong chân không là:", options: ["A. ∮ E ⋅ dS = ∑qin/ε₀", "B. ∮ E ⋅ dS = ∑qin", "C. ∮ E ⋅ dS = ε₀∑qin", "D. ∮ E ⋅ dl = 0"], ans: 0 },
+                    { q: "Câu 12. Hai điện tích q₁, q₂ đặt cách nhau một khoảng r. Trong các cách sau, để độ lớn của lực tương tác giữa hai điện tích tăng lên nhiều nhất, ta cần:", options: ["A. Tăng gấp đôi độ lớn điện tích q₁.", "B. Giảm khoảng cách r một nửa.", "C. Tăng gấp đôi độ lớn hai điện tích và r.", "D. Tăng gấp đôi độ lớn điện tích q₂ và r."], ans: 1 },
+                    { q: "Câu 13. Điện thế do một điện tích điểm q gây ra tại điểm M cách q một khoảng r trong môi trường có hằng số điện môi ε là:", options: ["A. V = k |q| / (εr)", "B. V = k q / (εr)", "C. V = k |q| / (εr²)", "D. V = k q / (εr²)"], ans: 1 }
+                ]
+            },
+            {
+                id: "ch3",
+                title: "Chương 3 – TỪ TRƯỜNG KHÔNG ĐỔI",
+                desc: "Từ trường, lực từ, định luật Ampere, cảm ứng từ của dòng điện.",
+                questions: [
+                    { q: "Câu 1. Đơn vị của cảm ứng từ trong hệ SI là:", options: ["A. Vôn", "B. Tesla", "C. Coulomb", "D. Jun"], ans: 1 },
+                    { q: "Câu 2. Từ trường do dòng điện thẳng dài tạo ra có đường sức là:", options: ["A. các đường thẳng song song dòng điện", "B. các đường tròn đồng tâm quanh dây dẫn", "C. các đường parabol", "D. các đường elip hở"], ans: 1 },
+                    { q: "Câu 3. Lực từ tác dụng lên điện tích chuyển động trong từ trường phụ thuộc vào:", options: ["A. điện tích, vận tốc, cảm ứng từ và góc giữa v với B", "B. khối lượng riêng của môi trường", "C. nhiệt độ của dây dẫn", "D. màu sắc của điện tích"], ans: 0 },
+                    { q: "Câu 4. Khi một hạt tích điện chuyển động song song với vectơ cảm ứng từ, lực từ tác dụng lên hạt:", options: ["A. cực đại", "B. bằng không", "C. luôn hướng lên trên", "D. luôn cùng chiều vận tốc"], ans: 1 },
+                    { q: "Câu 5. Một đoạn dây dài 0,4 m mang dòng điện 5 A, đặt vuông góc với từ trường đều B = 0,2 T. Lực từ tác dụng lên dây là:", options: ["A. 0,2 N", "B. 0,4 N", "C. 0,6 N", "D. 1,0 N"], ans: 1 },
+                    { q: "Câu 6. Từ trường do dây thẳng dài mang dòng điện I tại điểm cách dây r có độ lớn:", options: ["A. B = μ₀I/(2πr)", "B. B = μ₀Ir/(2π)", "C. B = μ₀/(Ir)", "D. B = 2πr/(μ₀I)"], ans: 0 },
+                    { q: "Câu 7. Một electron bay vuông góc vào từ trường đều. Nếu chỉ chịu lực từ, electron sẽ chuyển động theo:", options: ["A. đường thẳng đều", "B. đường tròn", "C. đường parabol", "D. đường hyperbol"], ans: 1 },
+                    { q: "Câu 8. Một hạt điện tích q, khối lượng m chuyển động vuông góc với từ trường đều B. Bán kính quỹ đạo tròn của hạt là:", options: ["A. R = qB/(mv)", "B. R = mv/(qB)", "C. R = qv/(mB)", "D. R = mB/(qv)"], ans: 1 },
+                    { q: "Câu 9. Một nửa vòng dây tròn bán kính R = 0,1 m mang dòng điện I = 2 A. Cảm ứng từ tại tâm do nửa vòng dây gây ra có độ lớn xấp xỉ:", options: ["A. 3,14.10⁻⁶ T", "B. 6,28.10⁻⁶ T", "C. 1,26.10⁻⁵ T", "D. 2,51.10⁻⁵ T"], ans: 1 },
+                    { q: "Câu 10. Chu kỳ chuyển động tròn của hạt điện tích q trong từ trường đều B, khi vận tốc vuông góc với B, được xác định bởi:", options: ["A. T = 2πm/(qB)", "B. T = qB/(2πm)", "C. T = mv/(qB)", "D. T = qv/(mB)"], ans: 0 },
+                    { q: "Câu 11. Công thức nào sau đây tính cường độ từ trường do dòng điện I chạy trong vòng dây tròn bán kính R gây ra tại tâm O của vòng dây?", options: ["A. H = μμ₀I / 2R", "B. H = μμ₀I / 2πR", "C. H = I / 2R", "D. H = I / 2πR"], ans: 2 },
+                    { q: "Câu 12. Chọn phát biểu đúng. Từ thông toàn phần gửi qua một mặt kín S bất kỳ:", options: ["A. Bằng tổng đại số các dòng điện xuyên qua nó.", "B. Bằng không.", "C. Bằng tổng đại số các dòng điện gây ra từ trường.", "D. Bằng tổng các dòng điện xung quanh nó."], ans: 1 },
+                    { q: "Câu 13. Cho dòng điện tròn (O,R) đặt trong không khí, độ lớn vectơ cảm ứng từ do dòng điện này gây ra tại tâm O có giá trị:", options: ["A. Bo = μ₀I / 2R", "B. Bo = μ₀I / 4R", "C. Bo = μ₀I / R²", "D. Bo = μ₀I / 2R²"], ans: 0 },
+                    { q: "Câu 14. Một electron chuyển động với vận tốc v chịu tác dụng của lực từ FB. Dùng quy tắc bàn tay trái xác định phương, chiều của vectơ cảm ứng từ B.", options: ["A. Vuông góc màn hình, từ ngoài vào trong.", "B. Phương ngang, từ phải sang trái.", "C. Vuông góc màn hình, từ trong ra ngoài.", "D. Phương ngang, từ trái sang phải."], ans: 2 }
+                ]
+            },
+            {
+                id: "ch4",
+                title: "Chương 4 – TRƯỜNG ĐIỆN TỪ VÀ SÓNG ĐIỆN TỪ",
+                desc: "Cảm ứng điện từ, định luật Faraday, định luật Lenz, tự cảm.",
+                questions: [
+                    { q: "Câu 1. Suất điện động cảm ứng xuất hiện khi đại lượng nào qua mạch kín thay đổi?", options: ["A. khối lượng", "B. từ thông", "C. nhiệt độ", "D. áp suất"], ans: 1 },
+                    { q: "Câu 2. Dấu âm trong biểu thức Faraday thể hiện nội dung của:", options: ["A. định luật Lenz", "B. định luật Ohm", "C. định luật Coulomb", "D. định luật Newton"], ans: 0 },
+                    { q: "Câu 3. Tự cảm là hiện tượng cảm ứng điện từ do sự biến thiên của:", options: ["A. dòng điện trong chính mạch đó", "B. nhiệt độ môi trường", "C. áp suất khí", "D. khối lượng dây"], ans: 0 },
+                    { q: "Câu 4. Sóng điện từ trong chân không truyền với tốc độ:", options: ["A. v = g", "B. v = c", "C. v = h", "D. v = R"], ans: 1 },
+                    { q: "Câu 5. Một cuộn dây có 200 vòng. Từ thông qua mỗi vòng giảm từ 5.10⁻³ Wb xuống 1.10⁻³ Wb trong 0,02 s. Độ lớn suất điện động cảm ứng là:", options: ["A. 20 V", "B. 30 V", "C. 40 V", "D. 50 V"], ans: 2 },
+                    { q: "Câu 6. Một thanh dẫn dài 0,2 m chuyển động với vận tốc 4 m/s vuông góc với từ trường đều 0,5 T. Suất điện động cảm ứng giữa hai đầu thanh là:", options: ["A. 0,2 V", "B. 0,4 V", "C. 0,8 V", "D. 1,0 V"], ans: 1 },
+                    { q: "Câu 7. Năng lượng từ trường trong cuộn cảm L có dòng điện I là:", options: ["A. W = LI", "B. W = 1/2 LI²", "C. W = L/I", "D. W = I/L"], ans: 1 },
+                    { q: "Câu 8. Một cuộn dây có N vòng, từ thông qua mỗi vòng biến thiên theo Φ = Φ₀cosωt. Suất điện động cảm ứng cực đại bằng:", options: ["A. NΦ₀/ω", "B. NωΦ₀", "C. Φ₀/(Nω)", "D. Nω/Φ₀"], ans: 1 },
+                    { q: "Câu 9. Với N = 50, Φ₀ = 0,01 Wb, ω = 100 rad/s, suất điện động cảm ứng cực đại của cuộn dây là:", options: ["A. 5 V", "B. 25 V", "C. 50 V", "D. 100 V"], ans: 2 },
+                    { q: "Câu 10. Theo Maxwell, điện trường biến thiên theo thời gian có thể sinh ra:", options: ["A. từ trường", "B. trọng trường", "C. áp suất cơ học", "D. lực đàn hồi"], ans: 0 },
+                    { q: "Câu 11. Câu phát biểu nào sau đây là đúng?", options: ["A. Khi từ thông gửi qua một mạch kín biến đổi thì trong mạch sẽ xuất hiện một dòng điện cảm ứng.", "B. Bất kỳ một từ trường nào cũng sinh ra một điện trường xoáy.", "C. Dòng điện cảm ứng luôn có chiều tuân theo nguyên nhân đã sinh ra nó.", "D. Dòng điện dịch là dòng chuyển dời có hướng của các điện tích."], ans: 0 },
+                    { q: "Câu 12. Cho một dây dài mang dòng điện I không đổi có chiều nằm ngang hướng sang phải. Một khung dây hình chữ nhật di chuyển từ từ lên trên với tốc độ v. Nhận định nào là đúng khi nói về dòng điện cảm ứng Ic xuất hiện trong khung dây?", options: ["A. Ic chạy ngược chiều kim đồng hồ.", "B. Ic chạy theo chiều kim đồng hồ.", "C. Ic đổi chiều liên tục trong quá trình rơi.", "D. Ic = 0 do không có sự biến thiên từ trường."], ans: 0 }
+                ]
+            },
+            {
+                id: "ch5",
+                title: "Chương 5 – QUANG HỌC SÓNG",
+                desc: "Giao thoa, nhiễu xạ, phân cực ánh sáng.",
+                questions: [
+                    { q: "Câu 1. Hai nguồn sáng kết hợp là hai nguồn có:", options: ["A. cùng cường độ bất kỳ", "B. hiệu pha không đổi theo thời gian", "C. cùng khoảng cách tới màn", "D. bước sóng luôn bằng 0"], ans: 1 },
+                    { q: "Câu 2. Trong giao thoa ánh sáng, vân sáng xuất hiện tại nơi hai sóng gặp nhau:", options: ["A. ngược pha hoàn toàn", "B. cùng pha", "C. có tần số bằng 0", "D. không truyền được"], ans: 1 },
+                    { q: "Câu 3. Sự phân cực ánh sáng chứng tỏ ánh sáng là:", options: ["A. sóng ngang", "B. sóng dọc", "C. dòng điện", "D. sóng âm"], ans: 0 },
+                    { q: "Câu 4. Hiện tượng nhiễu xạ ánh sáng thể hiện rõ khi ánh sáng đi qua:", options: ["A. khe rất rộng", "B. lỗ nhỏ hoặc khe hẹp", "C. gương phẳng lớn", "D. môi trường hấp thụ hoàn toàn"], ans: 1 },
+                    { q: "Câu 5. Trong thí nghiệm Young, khoảng vân được tính bởi:", options: ["A. i = λD/a", "B. i = aD/λ", "C. i = λa/D", "D. i = D/(λa)"], ans: 0 },
+                    { q: "Câu 6. Với ánh sáng đơn sắc λ = 600 nm, khoảng cách hai khe a = 0,5 mm, màn cách khe D = 2 m. Khoảng vân là:", options: ["A. 1,2 mm", "B. 2,4 mm", "C. 3,6 mm", "D. 4,8 mm"], ans: 1 },
+                    { q: "Câu 7. Trong giao thoa hai khe, điều kiện vân tối là:", options: ["A. Δd = kλ", "B. Δd = 2kλ", "C. Δd = (k + 1/2)λ", "D. Δd = λ/k"], ans: 2 },
+                    { q: "Câu 8. Trong nhiễu xạ qua một khe hẹp bề rộng b, điều kiện cực tiểu nhiễu xạ là:", options: ["A. b sinθ = kλ", "B. b cosθ = kλ", "C. b tanθ = λ/k", "D. b = kλsinθ"], ans: 0 },
+                    { q: "Câu 9. Một khe hẹp có b = 0,1 mm được chiếu bằng ánh sáng λ = 500 nm. Màn đặt cách khe 1 m. Bề rộng cực đại trung tâm xấp xỉ:", options: ["A. 2 mm", "B. 5 mm", "C. 10 mm", "D. 20 mm"], ans: 2 },
+                    { q: "Câu 10. Ánh sáng phân cực truyền qua kính phân tích. Nếu góc giữa phương phân cực và trục truyền là 60°, cường độ sau kính bằng:", options: ["A. I₀", "B. I₀/2", "C. I₀/4", "D. 0"], ans: 2 },
+                    { q: "Câu 11. Hiện tượng các vec-tơ dao động sáng bị giới hạn phương dao động khi ánh sáng tự nhiên đi qua môi trường bất đẳng hướng về mặt quang học được gọi là:", options: ["A. Giao thoa ánh sáng.", "B. Nhiễu xạ ánh sáng.", "C. Tán sắc ánh sáng.", "D. Phân cực ánh sáng."], ans: 3 },
+                    { q: "Câu 12. Trong hiện tượng nhiễu xạ của sóng phẳng đơn sắc bước sóng λ qua một khe hẹp bề rộng b, với k = ±1,±2,…. Điều kiện cực tiểu nhiễu xạ là:", options: ["A. sin φ = (2k +1)λ/b", "B. sin φ = kλ/b", "C. sin φ = kb/λ", "D. sin φ = (2k +1)λ/2b"], ans: 1 },
+                    { q: "Câu 13. Trong hiện tượng giao thoa ánh sáng, khi hai tia sáng gặp nhau và tạo thành vân tối trên màn quan sát thì hiệu quang lộ của hai tia này bằng, với k là số nguyên:", options: ["A. ΔL = kλ", "B. ΔL = (2k +1)λ/2", "C. ΔL = (2k +1)λ", "D. ΔL = (k+1/2)λ/2"], ans: 1 }
+                ]
+            },
+            {
+                id: "ch6",
+                title: "Chương 6 – THUYẾT TƯƠNG ĐỐI HẸP",
+                desc: "Tiên đề Einstein, biến đổi Lorentz, động lực học tương đối tính.",
+                questions: [
+                    { q: "Câu 1. Một tiên đề cơ bản của thuyết tương đối hẹp là:", options: ["A. thời gian tuyệt đối trong mọi hệ quy chiếu", "B. tốc độ ánh sáng trong chân không như nhau trong mọi hệ quán tính", "C. mọi vật đều chuyển động nhanh hơn ánh sáng", "D. khối lượng nghỉ của mọi hạt bằng 0"], ans: 1 },
+                    { q: "Câu 2. Hệ số Lorentz γ có giá trị bằng 1 khi:", options: ["A. v = 0", "B. v = c", "C. v > c", "D. v = 2c"], ans: 0 },
+                    { q: "Câu 3. Co độ dài Lorentz xảy ra theo phương:", options: ["A. vuông góc chuyển động", "B. song song chuyển động", "C. bất kỳ phương nào", "D. phương thẳng đứng"], ans: 1 },
+                    { q: "Câu 4. Năng lượng nghỉ của vật có khối lượng nghỉ m₀ là:", options: ["A. E₀ = m₀c²", "B. E₀ = m₀c", "C. E₀ = m₀/c²", "D. E₀ = c²/m₀"], ans: 0 },
+                    { q: "Câu 5. Một hạt chuyển động với v = 0,6c. Hệ số Lorentz của hạt là:", options: ["A. 1,00", "B. 1,25", "C. 1,50", "D. 2,00"], ans: 1 },
+                    { q: "Câu 6. Nếu hệ số Lorentz γ = 3, năng lượng toàn phần của hạt là:", options: ["A. m₀c²", "B. 2m₀c²", "C. 3m₀c²", "D. 4m₀c²"], ans: 2 },
+                    { q: "Câu 7. Nếu năng lượng toàn phần của hạt bằng 5 lần năng lượng nghỉ, động năng của hạt bằng:", options: ["A. m₀c²", "B. 2m₀c²", "C. 4m₀c²", "D. 5m₀c²"], ans: 2 },
+                    { q: "Câu 8. Một thanh có chiều dài riêng 5 m chuyển động dọc theo chiều dài với v = 0,8c. Chiều dài quan sát được là:", options: ["A. 2 m", "B. 3 m", "C. 4 m", "D. 5 m"], ans: 1 },
+                    { q: "Câu 9. Hai sự kiện đồng thời trong hệ S có thể không đồng thời trong hệ S’ chuyển động so với S. Điều này phản ánh:", options: ["A. tính tuyệt đối của thời gian", "B. tính tương đối của sự đồng thời", "C. sự bảo toàn điện tích", "D. tính độc lập của không gian và thời gian"], ans: 1 },
+                    { q: "Câu 10. Khi tốc độ của vật tiến rất gần tốc độ ánh sáng, γ tăng rất lớn. Điều này cho thấy:", options: ["A. vật dễ dàng vượt tốc độ ánh sáng", "B. cần năng lượng ngày càng lớn để tăng thêm tốc độ", "C. thời gian trở thành tuyệt đối", "D. khối lượng nghỉ biến mất"], ans: 1 },
+                    { q: "Câu 11. Một tính chất quan trọng của phép biến đổi Lorentz là:", options: ["A. Khối lượng của vật không phụ thuộc vận tốc.", "B. Khoảng thời gian giữa hai sự kiện luôn không đổi với mọi hệ quy chiếu.", "C. Tốc độ ánh sáng trong chân không có giá trị như nhau trong mọi hệ quy chiếu quán tính.", "D. Không gian và thời gian hoàn toàn tách biệt nhau."], ans: 2 },
+                    { q: "Câu 12. Theo quan điểm của cơ học tương đối tính, câu nào sau đây phát biểu sai?", options: ["A. Khoảng thời gian có tính tương đối, nó phụ thuộc vào chuyển động.", "B. Khái niệm đồng thời phụ thuộc vào hệ quy chiếu quán tính.", "C. Quan hệ nhân quả phụ thuộc vào hệ quy chiếu quán tính.", "D. Khi vật chuyển động với vận tốc lớn chiều dài của nó bị co ngắn theo phương chuyển động."], ans: 2 }
+                ]
+            },
+            {
+                id: "ch7",
+                title: "Chương 7 – QUANG HỌC LƯỢNG TỬ",
+                desc: "Thuyết lượng tử, bức xạ nhiệt, quang điện, tán xạ Compton.",
+                questions: [
+                    { q: "Câu 1. Năng lượng của một photon tỉ lệ thuận với:", options: ["A. tần số ánh sáng", "B. bước sóng ánh sáng", "C. khối lượng nghỉ của photon", "D. thời gian truyền sáng"], ans: 0 },
+                    { q: "Câu 2. Photon trong chân không có:", options: ["A. khối lượng nghỉ bằng 0", "B. điện tích dương", "C. điện tích âm", "D. vận tốc bằng 0"], ans: 0 },
+                    { q: "Câu 3. Hiện tượng quang điện ngoài chứng tỏ ánh sáng có:", options: ["A. tính chất hạt", "B. tính chất âm thanh", "C. khối lượng nghỉ lớn", "D. điện tích âm"], ans: 0 },
+                    { q: "Câu 4. Trong hiệu ứng Compton, photon tán xạ có bước sóng:", options: ["A. thường lớn hơn bước sóng ban đầu", "B. luôn nhỏ hơn bước sóng ban đầu", "C. luôn bằng 0", "D. không liên quan đến góc tán xạ"], ans: 0 },
+                    { q: "Câu 5. Photon có bước sóng 500 nm. Lấy hc = 1240 eV.nm. Năng lượng photon xấp xỉ:", options: ["A. 1,24 eV", "B. 2,48 eV", "C. 3,10 eV", "D. 4,96 eV"], ans: 1 },
+                    { q: "Câu 6. Kim loại có công thoát A = 2,0 eV. Giới hạn quang điện của kim loại là:", options: ["A. 310 nm", "B. 420 nm", "C. 620 nm", "D. 800 nm"], ans: 2 },
+                    { q: "Câu 7. Phương trình Einstein cho quang điện ngoài là:", options: ["A. hf = A + Kmax", "B. hf = A − Kmax", "C. hf = A/Kmax", "D. hf = Kmax − A"], ans: 0 },
+                    { q: "Câu 8. Độ dịch chuyển bước sóng Compton được xác định bởi:", options: ["A. Δλ = λC(1 − cosθ)", "B. Δλ = λC(1 + sinθ)", "C. Δλ = hf − A", "D. Δλ = mv²/2"], ans: 0 },
+                    { q: "Câu 9. Trong tán xạ Compton, độ dịch chuyển bước sóng lớn nhất ứng với góc tán xạ:", options: ["A. 0°", "B. 45°", "C. 90°", "D. 180°"], ans: 3 },
+                    { q: "Câu 10. Theo định luật Wien, nếu nhiệt độ tuyệt đối của vật đen tăng 2 lần thì bước sóng ứng với cực đại phát xạ:", options: ["A. tăng 2 lần", "B. giảm 2 lần", "C. tăng 4 lần", "D. không đổi"], ans: 1 },
+                    { q: "Câu 11. Khi vật phát ra các bức xạ nhiệt cân bằng thì nhiệt độ của vật:", options: ["A. Giảm dần theo thời gian.", "B. Không đổi theo thời gian.", "C. Khi tăng khi giảm.", "D. Tăng dần theo thời gian."], ans: 1 },
+                    { q: "Câu 12. Trong các công thức sau đây, công thức nào là công thức Einstein về hiện tượng quang điện?", options: ["A. hν = A + mv₀²max/2", "B. hν = A + mv₀²max", "C. hν = A − mv₀²max/2", "D. hν = 2A + mv₀²max/2"], ans: 0 },
+                    { q: "Câu 13. Trong hiện tượng tán xạ Compton, các photon tán xạ trên các electron liên kết yếu với hạt nhân có bước sóng:", options: ["A. Phụ thuộc vào vật liệu làm bia.", "B. Lớn hơn bước sóng photon ban đầu.", "C. Bằng bước sóng photon ban đầu.", "D. Nhỏ hơn bước sóng photon ban đầu."], ans: 1 },
+                    { q: "Câu 14. Giới hạn quang điện của mỗi kim loại là:", options: ["A. Bước sóng của ánh sáng kích thích.", "B. Công thoát của electron ở bề mặt kim loại đó.", "C. Bước sóng giới hạn của ánh sáng kích thích đối với kim loại đó để gây ra hiện tượng quang điện.", "D. Bước sóng của riêng kim loại đó."], ans: 2 },
+                    { q: "Câu 15. Phát biểu đúng trong số các phát biểu bên dưới khi nói về tính chất của ánh sáng:", options: ["A. III, IV.", "B. I, III.", "C. II, IV.", "D. I, IV."], ans: 3 }
+                ]
+            },
+            {
+                id: "ch8",
+                title: "Chương 8 – CƠ HỌC LƯỢNG TỬ",
+                desc: "Lưỡng tính sóng-hạt, giả thuyết de Broglie, hệ thức Heisenberg.",
+                questions: [
+                    { q: "Câu 1. Cơ học lượng tử được dùng chủ yếu để mô tả:", options: ["A. các hệ vi mô", "B. chuyển động hành tinh", "C. dòng chảy sông ngòi", "D. ma sát giữa hai vật lớn"], ans: 0 },
+                    { q: "Câu 2. Theo de Broglie, hạt có động lượng p sẽ có bước sóng:", options: ["A. λ = hp", "B. λ = h/p", "C. λ = p/h", "D. λ = h + p"], ans: 1 },
+                    { q: "Câu 3. Lưỡng tính sóng – hạt nghĩa là vi hạt:", options: ["A. chỉ có tính sóng", "B. chỉ có tính hạt", "C. có thể biểu hiện cả tính sóng và tính hạt", "D. không có năng lượng"], ans: 2 },
+                    { q: "Câu 4. Hệ thức bất định Heisenberg liên hệ độ bất định của:", options: ["A. vị trí và động lượng", "B. nhiệt độ và áp suất", "C. điện tích và khối lượng nghỉ", "D. thể tích và khối lượng riêng"], ans: 0 },
+                    { q: "Câu 5. Nếu động lượng của một vi hạt tăng gấp đôi thì bước sóng de Broglie của nó:", options: ["A. tăng gấp đôi", "B. giảm một nửa", "C. không đổi", "D. tăng gấp bốn"], ans: 1 },
+                    { q: "Câu 6. Một hạt có động lượng p = 6,625.10⁻²⁴ kg.m/s. Lấy h = 6,625.10⁻³⁴ J.s. Bước sóng de Broglie của hạt là:", options: ["A. 10⁻⁸ m", "B. 10⁻¹⁰ m", "C. 10⁻¹² m", "D. 10⁻¹⁴ m"], ans: 1 },
+                    { q: "Câu 7. Ý nghĩa vật lý của |ψ|² là:", options: ["A. khối lượng của hạt", "B. mật độ xác suất tìm thấy hạt", "C. vận tốc ánh sáng", "D. điện trở của môi trường"], ans: 1 },
+                    { q: "Câu 8. Điều kiện chuẩn hóa hàm sóng trong toàn không gian là:", options: ["A. ∫|ψ|²dV = 1", "B. ∫ψdV = 0", "C. ∫|ψ|dV = ∞", "D. ψ = 0 tại mọi điểm"], ans: 0 },
+                    { q: "Câu 9. Nếu độ bất định vị trí Δx giảm 4 lần thì giới hạn dưới của độ bất định động lượng Δp sẽ:", options: ["A. giảm 4 lần", "B. tăng 4 lần", "C. không đổi", "D. bằng 0"], ans: 1 },
+                    { q: "Câu 10. Thí nghiệm nhiễu xạ electron là bằng chứng trực tiếp cho:", options: ["A. tính sóng của electron", "B. tính trung hòa điện của electron", "C. electron không có khối lượng", "D. electron là hạt nhân nguyên tử"], ans: 0 },
+                    { q: "Câu 11. Chọn câu đúng. Nội dung của hệ thức bất định Heisenberg cho biết:", options: ["A. Năng lượng và thời gian tồn tại của hạt luôn được xác định đồng thời.", "B. Trong nguyên tử, electron chuyển động theo những quỹ đạo xác định.", "C. Vị trí và động lượng của hạt không được xác định đồng thời.", "D. Nếu hạt có vị trí xác định thì động lượng của nó cũng luôn xác định."], ans: 2 },
+                    { q: "Câu 12. Hàm sóng nào dưới đây đặc trưng tính chất hạt của ánh sáng?", options: ["A. ψ = ψ₀e^(-i/h(Et - p·r))", "B. ψ = ψ₀e^(-i/ℏ(ωt - p·r))", "C. ψ = ψ₀e^(-i/h(ωt - p·r))", "D. ψ = ψ₀e^(-i/ℏ(Et - p·r))"], ans: 3 }
+                ]
+            },
+            {
+                id: "ch9",
+                title: "Chương 9 – NGUYÊN TỬ",
+                desc: "Mẫu nguyên tử Bohr, quang phổ, các dãy mức năng lượng.",
+                questions: [
+                    { q: "Câu 1. Nguyên tử Hydro ở trạng thái cơ bản có năng lượng:", options: ["A. −13,6 eV", "B. −3,4 eV", "C. 0 eV", "D. 13,6 eV"], ans: 0 },
+                    { q: "Câu 2. Dãy Lyman ứng với các chuyển mức electron kết thúc tại:", options: ["A. n = 1", "B. n = 2", "C. n = 3", "D. n = 4"], ans: 0 },
+                    { q: "Câu 3. Dãy Balmer của nguyên tử Hydro kết thúc tại mức:", options: ["A. n = 1", "B. n = 2", "C. n = 3", "D. n = 4"], ans: 1 },
+                    { q: "Câu 4. Khi electron chuyển từ mức năng lượng cao xuống mức thấp hơn, nguyên tử sẽ:", options: ["A. hấp thụ photon", "B. phát ra photon", "C. mất proton", "D. biến thành neutron"], ans: 1 },
+                    { q: "Câu 5. Năng lượng của mức n trong nguyên tử H được cho bởi En = −13,6/n² eV. Năng lượng mức n = 2 là:", options: ["A. −13,6 eV", "B. −6,8 eV", "C. −3,4 eV", "D. −1,51 eV"], ans: 2 },
+                    { q: "Câu 6. Khi electron trong nguyên tử H chuyển từ n = 3 về n = 2, năng lượng photon phát ra xấp xỉ:", options: ["A. 1,89 eV", "B. 3,40 eV", "C. 10,2 eV", "D. 13,6 eV"], ans: 0 },
+                    { q: "Câu 7. Năng lượng cần để ion hóa nguyên tử H đang ở mức n = 2 là:", options: ["A. 1,51 eV", "B. 3,40 eV", "C. 10,2 eV", "D. 13,6 eV"], ans: 1 },
+                    { q: "Câu 8. Trong một dãy quang phổ Hydro, vạch có bước sóng lớn nhất ứng với chuyển mức:", options: ["A. từ mức liền kề phía trên về mức cuối của dãy", "B. từ vô cùng về mức cuối của dãy", "C. từ n = 1 lên n = 2", "D. từ mức thấp lên mức cao"], ans: 0 },
+                    { q: "Câu 9. Công thức Rydberg cho bước sóng photon phát ra khi electron chuyển từ n₂ về n₁ là:", options: ["A. 1/λ = R(1/n₁² − 1/n₂²)", "B. 1/λ = R(n₁² − n₂²)", "C. λ = R(1/n₁² − 1/n₂²)", "D. λ = Rn₁²n₂²"], ans: 0 },
+                    { q: "Câu 10. Theo quy tắc lựa chọn của chuyển dời lưỡng cực điện, chuyển dời nào sau đây được phép về mặt Δl?", options: ["A. s → s", "B. p → p", "C. d → p", "D. f → f"], ans: 2 },
+                    { q: "Câu 11. Năng lượng ion hoá của nguyên tử Hiđrô được xác định như sau:", options: ["A. E = E₁ − E∞", "B. E = E₁ − E₂", "C. E = E₂ − E₁", "D. E = E∞ − E₁"], ans: 3 },
+                    { q: "Câu 12. Năng lượng của electron hoá trị trong nguyên tử kim loại kiềm được tính bởi biểu thức:", options: ["A. Enℓ = − Rℏ / (n+ℓ)²", "B. Enℓ = − Rℏ / (n+Δℓ)²", "C. Enℓ = − Rh / n²", "D. Enℓ = − Rh / (n+Δℓ)²"], ans: 3 },
+                    { q: "Câu 13. Với n là số lượng tử chính (n = 1; 2; 3;…), biểu thức nào sau đây dùng để tính năng lượng của electron trong nguyên tử Hiđrô?", options: ["A. En = −Rh/n", "B. En = Rh/n", "C. En = −Rh/n²", "D. En = Rh/n²"], ans: 2 },
+                    { q: "Câu 14. Tần số của các vạch quang phổ của nguyên tử Hiđrô được xác định bởi công thức: ν = R(1/9 - 1/n²). Đó là các vạch thuộc dãy:", options: ["A. Paschen.", "B. Balmer.", "C. Brackett.", "D. Lyman."], ans: 0 }
+                ]
+            }
+        ];
+
+        // --- 2. STATE MANAGEMENT ---
+        const state = {
+            totalQuestions: 0,
+            answeredQuestions: 0,
+            answers: {}, 
+            isSubmitted: false,
+            currentChapterIndex: 0
+        };
+
+        let myChart = null;
+
+        // Calculate total questions
+        db.forEach(ch => {
+            state.totalQuestions += ch.questions.length;
+        });
+
+        // --- 3. DOM ELEMENTS ---
+        const els = {
+            navDesktop: document.getElementById('chapter-nav'),
+            navMobile: document.getElementById('mobile-nav'),
+            viewWelcome: document.getElementById('view-welcome'),
+            viewQuiz: document.getElementById('view-quiz'),
+            viewResults: document.getElementById('view-results'),
+            btnStart: document.getElementById('btn-start'),
+            btnSubmitTop: document.getElementById('btn-submit-top'),
+            btnSubmitFloat: document.getElementById('btn-submit-float'),
+            progressText: document.getElementById('progress-text'),
+            mainScrollArea: document.getElementById('main-scroll-area')
+        };
+
+        // --- 4. CORE FUNCTIONS ---
+        function init() {
+            renderNavigation();
+            updateProgress();
+            
+            // Event Listeners
+            els.btnStart.addEventListener('click', () => {
+                els.viewWelcome.classList.add('hidden');
+                els.viewQuiz.classList.remove('hidden');
+                els.btnSubmitTop.classList.remove('hidden');
+                els.btnSubmitFloat.classList.remove('hidden');
+                loadChapter(0);
+            });
+
+            els.btnSubmitTop.addEventListener('click', submitQuiz);
+            els.btnSubmitFloat.addEventListener('click', submitQuiz);
+        }
+
+        function renderNavigation() {
+            els.navDesktop.innerHTML = '';
+            els.navMobile.innerHTML = '';
+
+            db.forEach((ch, idx) => {
+                const titleMatch = ch.title.match(/Chương \d+/);
+                const shortTitle = titleMatch ? titleMatch[0] : `CH ${idx+1}`;
+
+                // Desktop Button
+                const btnDesk = document.createElement('button');
+                btnDesk.className = `w-full text-left px-4 py-3 mb-2 rounded-lg text-sm transition-all border flex items-center justify-between group nav-btn-${idx}`;
+                btnDesk.innerHTML = `
+                    <span class="font-medium truncate mr-2" title="${ch.title}">${ch.title}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full transition-colors ch-progress-${idx} bg-gray-800 text-gray-500 border border-gray-700">0/${ch.questions.length}</span>
+                `;
+                btnDesk.onclick = () => loadChapter(idx);
+                els.navDesktop.appendChild(btnDesk);
+
+                // Mobile Button
+                const btnMob = document.createElement('button');
+                btnMob.className = `px-5 py-2 rounded-full text-sm border font-medium transition-all nav-btn-mob-${idx}`;
+                btnMob.innerHTML = shortTitle;
+                btnMob.onclick = () => loadChapter(idx);
+                els.navMobile.appendChild(btnMob);
+            });
+            updateNavUI();
+        }
+
+        function updateNavUI() {
+            for (let i = 0; i < db.length; i++) {
+                const bD = els.navDesktop.querySelector(`.nav-btn-${i}`);
+                const bM = els.navMobile.querySelector(`.nav-btn-mob-${i}`);
+                
+                if (i === state.currentChapterIndex && !state.isSubmitted && els.viewQuiz.classList.contains('hidden') === false) {
+                    bD.className = bD.className.replace(/border-gray-800|border-transparent|text-gray-400|hover:bg-gray-900|bg-cyan-900\/20|text-cyan-400|glow-cyan/g, '').trim();
+                    bD.classList.add('bg-cyan-900/20', 'text-cyan-400', 'glow-cyan');
+                    
+                    bM.className = bM.className.replace(/bg-\[#0f0f13\]|border-gray-800|text-gray-400|bg-cyan-500\/20|border-cyan-400|text-cyan-400|shadow-\[0_0_10px_rgba\(0\,243\,255\,0\.5\)\]/g, '').trim();
+                    bM.classList.add('bg-cyan-500/20', 'border-cyan-400', 'text-cyan-400', 'shadow-[0_0_10px_rgba(0,243,255,0.5)]');
+                } else {
+                    bD.className = bD.className.replace(/bg-cyan-900\/20|text-cyan-400|glow-cyan/g, '').trim();
+                    bD.classList.add('text-gray-400', 'hover:bg-gray-900', 'border-transparent');
+                    
+                    bM.className = bM.className.replace(/bg-cyan-500\/20|border-cyan-400|text-cyan-400|shadow-\[0_0_10px_rgba\(0\,243\,255\,0\.5\)\]/g, '').trim();
+                    bM.classList.add('bg-[#0f0f13]', 'border-gray-800', 'text-gray-400');
+                }
+
+                // Update progress counts in sidebar
+                if(!state.isSubmitted) {
+                    const answeredInCh = chAnswerCount(i);
+                    const progEl = bD.querySelector(`.ch-progress-${i}`);
+                    if(progEl) {
+                        progEl.innerText = `${answeredInCh}/${db[i].questions.length}`;
+                        if(answeredInCh === db[i].questions.length) {
+                            progEl.className = progEl.className.replace(/bg-gray-800|text-gray-500|border-gray-700/g, '').trim();
+                            progEl.classList.add('bg-pink-500/20', 'text-pink-400', 'border-pink-500/50', 'shadow-[0_0_5px_rgba(255,0,255,0.3)]');
+                        }
+                    }
+                }
+            }
+        }
+
+        function chAnswerCount(chIdx) {
+            let count = 0;
+            const prefix = `${db[chIdx].id}_`;
+            for (let key in state.answers) {
+                if (key.startsWith(prefix)) count++;
+            }
+            return count;
+        }
+
+        function loadChapter(idx) {
+            if (state.isSubmitted) return; 
+            
+            els.viewWelcome.classList.add('hidden');
+            els.viewResults.classList.add('hidden');
+            els.viewQuiz.classList.remove('hidden');
+            
+            state.currentChapterIndex = idx;
+            const chapter = db[idx];
+            
+            let html = `
+                <div class="bg-[#0f0f13] rounded-xl border border-cyan-500/30 p-6 sm:p-8 mb-8 sticky top-0 z-20 shadow-[0_5px_20px_rgba(0,0,0,0.8)] backdrop-blur-md">
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white mb-2 glow-text-cyan tracking-wide uppercase">${chapter.title}</h2>
+                    <p class="text-gray-400 text-sm leading-relaxed">${chapter.desc}</p>
+                    <div class="absolute bottom-0 left-0 h-[2px] bg-cyan-500 shadow-[0_0_10px_#00f3ff] w-full"></div>
+                </div>
+            `;
+
+            chapter.questions.forEach((q, qIdx) => {
+                const qId = `${chapter.id}_q${qIdx}`;
+                const savedAns = state.answers[qId];
+
+                html += `
+                    <div class="bg-[#0a0a0d] rounded-xl border border-gray-800 p-6 sm:p-8 transition-all hover:border-cyan-500/40 hover:shadow-[0_0_20px_rgba(0,243,255,0.05)] animate-fade-in" style="animation-delay: ${qIdx * 0.05}s" id="container_${qId}">
+                        <div class="flex items-start gap-4 mb-5">
+                            <div class="w-8 h-8 rounded bg-gray-900 border border-gray-700 text-cyan-400 font-bold flex items-center justify-center shrink-0 mt-0.5 shadow-[0_0_5px_rgba(0,243,255,0.2)]">${qIdx + 1}</div>
+                            <h3 class="text-lg font-medium text-gray-200 leading-snug">${q.q}</h3>
+                        </div>
+                        <div class="space-y-3 pl-12">
+                `;
+
+                q.options.forEach((opt, oIdx) => {
+                    const isChecked = savedAns === oIdx ? 'checked' : '';
+                    html += `
+                        <label class="custom-radio flex items-start p-3.5 rounded-lg border border-gray-800 bg-[#0f0f13] cursor-pointer hover:bg-gray-900 hover:border-gray-700 transition-all">
+                            <input type="radio" name="${qId}" value="${oIdx}" ${isChecked} onchange="saveAnswer('${chapter.id}', ${qIdx}, ${oIdx})">
+                            <div class="radio-mark shrink-0 mt-0.5"></div>
+                            <div class="option-content text-gray-400 leading-relaxed transition-colors">${opt}</div>
+                        </label>
+                    `;
+                });
+
+                html += `</div></div>`;
+            });
+
+            els.viewQuiz.innerHTML = html;
+            updateNavUI();
+            els.mainScrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        window.saveAnswer = function(chId, qIdx, optIdx) {
+            const key = `${chId}_q${qIdx}`;
+            if (state.answers[key] === undefined) {
+                state.answeredQuestions++;
+            }
+            state.answers[key] = optIdx;
+            updateProgress();
+            updateNavUI();
+        };
+
+        function updateProgress() {
+            els.progressText.innerText = `Đã giải mã: ${state.answeredQuestions}/${state.totalQuestions}`;
+            if (state.answeredQuestions === state.totalQuestions && !state.isSubmitted) {
+                els.btnSubmitFloat.classList.add('animate-pulse', 'glow-pink');
+                els.btnSubmitFloat.classList.remove('border-pink-500');
+            } else {
+                els.btnSubmitFloat.classList.remove('animate-pulse', 'glow-pink');
+                els.btnSubmitFloat.classList.add('border-pink-500');
+            }
+        }
+
+        // --- 5. GRADING & RESULTS ---
+        function submitQuiz() {
+            if (state.answeredQuestions < state.totalQuestions) {
+                const conf = confirm(`CẢNH BÁO: Bạn mới giải mã ${state.answeredQuestions}/${state.totalQuestions} node. Tiếp tục trích xuất kết quả?`);
+                if (!conf) return;
+            }
+            
+            state.isSubmitted = true;
+            els.viewQuiz.classList.add('hidden');
+            els.btnSubmitTop.classList.add('hidden');
+            els.btnSubmitFloat.classList.add('hidden');
+            els.navDesktop.parentElement.classList.add('hidden'); 
+            els.navMobile.classList.add('hidden');
+            els.viewResults.classList.remove('hidden');
+
+            let totalCorrect = 0;
+            const chapterStats = [];
+
+            db.forEach(ch => {
+                let chCorrect = 0;
+                ch.questions.forEach((q, qIdx) => {
+                    const userAns = state.answers[`${ch.id}_q${qIdx}`];
+                    if (userAns === q.ans) {
+                        chCorrect++;
+                        totalCorrect++;
+                    }
+                });
+                chapterStats.push({
+                    title: ch.title.split(' – ')[0], 
+                    fullTitle: ch.title,
+                    correct: chCorrect,
+                    total: ch.questions.length,
+                    percent: Math.round((chCorrect / ch.questions.length) * 100)
+                });
+            });
+
+            const overallPercent = Math.round((totalCorrect / state.totalQuestions) * 100);
+            document.getElementById('res-total-score').innerText = `${totalCorrect}/${state.totalQuestions}`;
+            document.getElementById('res-percentage').innerText = `${overallPercent}%`;
+
+            renderChart(chapterStats);
+            renderDetailedReview(chapterStats);
+            els.mainScrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            if (myChart) myChart.destroy();
+
+            const labels = data.map(d => d.title);
+            const dataPoints = data.map(d => d.percent);
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Độ Chính Xác (%)',
+                        data: dataPoints,
+                        backgroundColor: 'rgba(0, 243, 255, 0.2)',
+                        borderColor: '#00f3ff',
+                        borderWidth: 2,
+                        borderRadius: 4,
+                        hoverBackgroundColor: 'rgba(255, 0, 255, 0.4)',
+                        hoverBorderColor: '#ff00ff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, 
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: '#1e293b' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { color: '#94a3b8', callback: function(value) { return value + '%' } },
+                            grid: { color: '#1e293b' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f0f13',
+                            titleColor: '#00f3ff',
+                            bodyColor: '#fff',
+                            borderColor: '#00f3ff',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Tỷ lệ: ${context.raw}% (${data[context.dataIndex].correct}/${data[context.dataIndex].total})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderDetailedReview(stats) {
+            const container = document.getElementById('review-section');
+            let html = '';
+
+            db.forEach((ch, chIdx) => {
+                const stat = stats[chIdx];
+                html += `
+                    <div class="border border-gray-800 rounded-xl overflow-hidden mb-5 bg-[#0a0a0d] shadow-lg animate-fade-in" style="animation-delay: ${chIdx * 0.1}s">
+                        <div class="bg-[#0f0f13] hover:bg-gray-900 p-5 border-b border-gray-800 flex justify-between items-center cursor-pointer transition-colors" onclick="document.getElementById('rev-ch-${ch.id}').classList.toggle('hidden')">
+                            <div>
+                                <h4 class="font-bold text-white tracking-wide uppercase">${ch.title}</h4>
+                                <p class="text-sm text-cyan-400 mt-1">Hoàn thành: ${stat.correct}/${stat.total} node</p>
+                            </div>
+                            <div class="text-cyan-500 font-bold glow-text-cyan">▼</div>
+                        </div>
+                        <div id="rev-ch-${ch.id}" class="hidden p-5 space-y-6">
+                `;
+
+                ch.questions.forEach((q, qIdx) => {
+                    const qId = `${ch.id}_q${qIdx}`;
+                    const userAns = state.answers[qId];
+                    const isCorrect = userAns === q.ans;
+                    
+                    const icon = isCorrect 
+                        ? `<span class="text-[#00ff66] font-bold text-2xl mr-3 drop-shadow-[0_0_8px_#00ff66] shrink-0">✓</span>` 
+                        : `<span class="text-[#ff003c] font-bold text-2xl mr-3 drop-shadow-[0_0_8px_#ff003c] shrink-0">✗</span>`; 
+
+                    html += `
+                        <div class="pb-5 border-b border-gray-800/50 last:border-0 last:pb-0">
+                            <div class="flex items-start mb-3">
+                                ${icon}
+                                <p class="font-medium text-gray-200 leading-snug"><span class="text-gray-500 mr-1">[Node ${qIdx+1}]</span> ${q.q}</p>
+                            </div>
+                            <div class="pl-9 space-y-2 text-sm">
+                    `;
+
+                    q.options.forEach((opt, oIdx) => {
+                        let styleClass = "text-gray-500 p-2 rounded border border-transparent";
+                        if (oIdx === q.ans) {
+                            styleClass = "text-[#00ff66] font-bold bg-[#00ff66]/10 border border-[#00ff66]/30 shadow-[0_0_10px_rgba(0,255,102,0.1)] p-2 rounded inline-block w-full";
+                        } else if (oIdx === userAns && !isCorrect) {
+                            styleClass = "text-[#ff003c] font-bold line-through bg-[#ff003c]/10 border border-[#ff003c]/30 shadow-[0_0_10px_rgba(255,0,60,0.1)] p-2 rounded inline-block w-full";
+                        }
+                        
+                        html += `<div class="${styleClass}">${opt}</div>`;
+                    });
+
+                    html += `</div></div>`;
+                });
+
+                html += `</div></div>`;
+            });
+
+            container.innerHTML += html;
+        }
+
+        // Khởi động
+        init();
+
+    </script>
+</body>
+</html>
